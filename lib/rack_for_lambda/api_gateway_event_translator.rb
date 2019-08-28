@@ -4,7 +4,7 @@ require 'base64'
 
 module RackForLambda
   class ApiGatewayEventTranslator
-    def translate(event)
+    def translate_request(event)
       {
         "REQUEST_METHOD" => event["httpMethod"],
         "PATH_INFO" => event['path'],
@@ -24,6 +24,18 @@ module RackForLambda
         'rack.run_once' => false
       }.merge(http_headers(event))
     end
+
+    def translate_response(headers, status, body)
+      encoded_body  = Base64.encode64(body)
+      {
+        'status' => status,
+        'headers' => headers,
+        'isBase64Encoded' => true,
+        'body' => encoded_body,
+      }
+    end
+
+  private
 
     def create_input(event)
       body = event['body'] || ''
