@@ -25,14 +25,58 @@ module RackForLambda
       }.merge(http_headers(event))
     end
 
-    def translate_response(headers, status, body)
-      encoded_body  = Base64.encode64(body)
-      {
-        'status' => status,
-        'headers' => headers,
-        'isBase64Encoded' => true,
-        'body' => encoded_body,
-      }
+
+    def translate_response(headers, status, body_content)
+      Response.new(headers, status, body_content).to_h
+    end
+
+    class Response
+      attr_reader :headers, :status, :body_content
+      require 'set'
+      BINARY_CONTENT_TYPES = Set.new(["application/octet-stream", "image/jpeg", "image/png", "image/gif"])
+
+      def initialize(headers, status, body_content)
+        @headers = headers
+        @status = status
+        @body_content = body_content.join("")
+      end
+
+      def body
+        @body ||= convert_body_content
+      end
+
+      def convert_body_content
+        if is_base_64_encoded?
+          Base64.encode64(@body_content)
+        else
+          @body_content
+        end
+      end
+
+      def is_base_64_encoded?
+        @is_base_64_encoded ||= is_binary? || !is_utf8?
+      end
+
+      def is_binary?
+        BINARY_CONTENT_TYPES.include?(headers["Content-Type"])
+      end
+
+      def is_utf8?
+        @body_content.encoding == Encoding::UTF_8
+      end
+
+      def to_h
+        {
+          'status' => status,
+          'headers' => headers,
+          'isBase64Encoded' => is_base_64_encoded?,
+          'body' => body,
+        }
+      end
+
+      def to_json
+        self.to_h.to_json
+      end
     end
 
   private

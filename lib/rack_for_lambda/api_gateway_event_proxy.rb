@@ -11,13 +11,7 @@ module RackForLambda
     def handle(event)
       env = @translator.translate_request(event)
       headers, status, body_content = @app.call(Rack::Utils::HeaderHash.new(env))
-
-      body = ""
-      body_content.each do |chunk|
-        body += chunk
-      end
-
-      response = @translator.translate_response(event)
+      response = @translator.translate_response(headers, status, body_content)
     end
   end
 end
